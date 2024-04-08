@@ -2,6 +2,8 @@ class Player {
   constructor(x, y, width, height) {
     this.x = x;
     this.y = y;
+    this.startX = x;
+    this.startY = y;
     this.width = width;
     this.height = height;
     this.velocityY = 0;
@@ -16,15 +18,16 @@ class Player {
     this.movingDroite = false;
     this.movingGauche = false;
     this.dashDirection = null;
+    this.morto = true;
   }
 
   /**
    * Dessine le joueur sur le canvas.
    * @param {CanvasRenderingContext2D} ctx - Le contexte de rendu du canvas.
    */
-  draw(ctx) {
+  draw(ctx, cameraX, cameraY) {
     ctx.fillStyle = "blue";
-    ctx.fillRect(this.x, this.y, this.width, this.height);
+    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
   }
 
   /**
@@ -35,11 +38,22 @@ class Player {
     clearTimeout(this.timeoutJump);
   }
 
+  reset() {
+    this.x = this.startX
+    this.y = this.startY
+  }
+
   /**
    * Effectue les actions nécessaires lorsque le joueur meurt.
    */
   mort() {
-    console.log("Le joueur est mort !");
+
+    if (!this.morto) {
+      console.log("Le joueur est mort !");
+      this.morto = true;
+      window.location.reload();
+    }
+
   }
 
   /**
@@ -103,6 +117,8 @@ class Cube {
   constructor(x, y, width, height) {
     this.x = x;
     this.y = y;
+    this.startX = x;
+    this.startY = y;
     this.width = width;
     this.height = height;
     this.velocityY = 0;
@@ -110,12 +126,35 @@ class Cube {
     this.gravityDirection = "down";
   }
 
-  draw(ctx) {
+  draw(ctx, cameraX, cameraY) {
     // Dessiner le cube sur le canvas
     ctx.fillStyle = "red"; // Couleur de remplissage
-    ctx.fillRect(this.x, this.y, this.width, this.height); // Rectangle représentant le cube
+    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
+  }
+
+  reset() {
+    this.x = this.startX
+    this.y = this.startY
+  }
+
+}
+
+
+class Door {
+  constructor(x, y, width, height) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+  }
+
+  draw(ctx, cameraX, cameraY) {
+    // Dessiner sur le canvas
+    ctx.fillStyle = "aqua"; // Couleur de remplissage
+    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
   }
 }
+
 
 class Platform {
   /**
@@ -136,9 +175,9 @@ class Platform {
    * Dessine la plateforme sur le canvas.
    * @param {CanvasRenderingContext2D} ctx - Le contexte de rendu du canvas.
    */
-  draw(ctx) {
+  draw(ctx, cameraX, cameraY) {
     ctx.fillStyle = "green";
-    ctx.fillRect(this.x, this.y, this.width, this.height);
+    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
   }
 }
 
@@ -152,16 +191,42 @@ class Game {
   constructor() {
     this.canvas = document.getElementById("gameCanvas");
     this.ctx = this.canvas.getContext("2d");
-    this.canvasWidth = this.canvas.width;
-    this.canvasHeight = this.canvas.height;
+
+    // Définir la taille de la zone de vue (viewport)
+    this.viewportWidth = this.canvas.width;
+    this.viewportHeight = this.canvas.height;
+
+    // Définir la taille de la carte (map)
+    this.mapWidth = 1200; // Largeur de la carte
+    this.mapHeight = 600; // Hauteur de la carte
+
 
     this.player = new Player(50, 50, 30, 60); // Création d'une isntance de Player
-    this.cube = new Cube(90, 50, 30, 30); // Création d'une instance de Cube
+    this.cube = new Cube(90, 50, 40, 40); // Création d'une instance de Cube
 
-    this.platforms = [
-      new Platform(150, 550, 300, 20),
-      new Platform(400, 300, 300, 20),
+    // Initialiser la position de la caméra (centrée sur le joueur)
+    this.cameraX = this.player.x - this.viewportWidth / 2;
+    this.cameraY = this.player.y - this.viewportHeight / 2;
+
+    this.levels = [
+      {
+        platforms: [
+          { x: 100, y: 200, width: 150, height: 20 }, // Plateforme 1
+          { x: 300, y: 300, width: 200, height: 20 }, // Plateforme 2
+        ],
+        door: { x: this.mapWidth - 50, y: this.mapHeight - 150, width: 50, height: 150 }
+      },
+      {
+        platforms: [
+          { x: 50, y: 150, width: 100, height: 20 }, // Plateforme 1
+          { x: 200, y: 250, width: 150, height: 20 }, // Plateforme 2
+        ]
+      },
     ];
+
+    this.level = 1
+    this.loadLevel(this.level)
+
 
     this.touchStartX = 0;
     this.touchEndX = 0;
@@ -170,14 +235,38 @@ class Game {
     this.gameLoop();
   }
 
+  loadLevel(levelNumber) {
+    const lvlI = levelNumber - 1;
+    const level = this.levels[lvlI];
+
+    this.platforms = level.platforms.map(platformData => new Platform(platformData.x, platformData.y, platformData.width, platformData.height));
+    this.platforms.push(new Platform(0, this.mapHeight - 20, this.mapWidth, 20));
+    console.log("LoadLvl", this.platforms)
+    if (level.door) {
+      this.door = new Door(level.door.x, level.door.y, level.door.width, level.door.height); //Ajouter la porte
+    } else {
+      console.warn("PAS DE PORTE DE PROCHAIN NIVEAU")
+    }
+
+    //Si c'est pas le niveau 1 reset la position du cube et du joueurs :
+    if (levelNumber != 1) {
+      this.player.reset();
+      this.cube.reset();
+    }
+
+  }
+
   draw() {
-    this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+    this.ctx.clearRect(0, 0, this.viewportWidth, this.viewportHeight);
 
-    this.player.draw(this.ctx);
-    this.cube.draw(this.ctx);
+    // Dessiner les éléments de la carte en fonction de la position de la caméra
+    this.player.draw(this.ctx, this.cameraX, this.cameraY);
+    this.cube.draw(this.ctx, this.cameraX, this.cameraY);
+    this.door.draw(this.ctx, this.cameraX, this.cameraY);
 
+    // Dessiner les plateformes
     this.platforms.forEach((platform) => {
-      platform.draw(this.ctx);
+      platform.draw(this.ctx, this.cameraX, this.cameraY);
     });
   }
 
@@ -200,7 +289,7 @@ class Game {
     }
 
     // Si le joueur sort du canvas, activer la fonction de mort
-    if (player.y > this.canvasHeight || player.y + player.height < 0) {
+    if (player.y > this.viewportHeight || player.y + player.height < 0) {
       this.player.mort();
     }
 
@@ -334,6 +423,7 @@ class Game {
     if (
       // Vérifie si le personnage est sur le cube
       this.player.y + this.player.height >= this.cube.y &&
+      this.player.y < this.cube.y + this.cube.height &&
       this.player.x < this.cube.x + this.cube.width &&
       this.player.x + this.player.width > this.cube.x
     ) {
@@ -352,9 +442,60 @@ class Game {
         this.cube.x -= nbmove;
 
       }
-      
+
     }
   }
+
+  updateCam() {
+    // Mettre à jour la position de la caméra pour suivre le joueur
+    this.cameraX = this.player.x - this.viewportWidth / 2;
+    this.cameraY = this.player.y - this.viewportHeight / 2;
+
+    // Limiter la caméra pour qu'elle ne sorte pas des limites de la carte
+    this.cameraX = Math.max(0, Math.min(this.mapWidth - this.viewportWidth, this.cameraX));
+    this.cameraY = Math.max(0, Math.min(this.mapHeight - this.viewportHeight, this.cameraY));
+
+    // Ajuster la position de la caméra si le joueur est près des bords de la carte
+    if (this.player.x < this.viewportWidth / 2) {
+      this.cameraX = 0;
+    } else if (this.player.x > this.mapWidth - this.viewportWidth / 2) {
+      this.cameraX = this.mapWidth - this.viewportWidth;
+    }
+
+    if (this.player.y < this.viewportHeight / 2) {
+      this.cameraY = 0;
+    } else if (this.player.y > this.mapHeight - this.viewportHeight / 2) {
+      this.cameraY = this.mapHeight - this.viewportHeight;
+    }
+  }
+
+  winDoor() {
+
+    //Détection si cube touchée porte
+    if (!this.hasCubeTouchedDoor && this.cube.x < this.door.x + this.door.width &&
+      this.cube.x + this.cube.width > this.door.x &&
+      this.cube.y < this.door.y + this.door.height &&
+      this.cube.y + this.cube.height > this.door.y) {
+
+      this.hasCubeTouchedDoor = true;
+      this.cube.x = -50;
+    }
+
+    //Collsiion joeurs porte
+    if (this.player.x < this.door.x + this.door.width &&
+      this.player.x + this.player.width > this.door.x &&
+      this.player.y < this.door.y + this.door.height &&
+      this.player.y + this.player.height > this.door.y) {
+      if (this.hasCubeTouchedDoor) {
+        this.hasCubeTouchedDoor = false;
+        this.level += 1
+        this.loadLevel(this.level)
+      } else {
+        // Traitement de collision simple
+      }
+    }
+  }
+
 
   /**
    * Gère le mouvement du balayage sur l'écran tactile.
@@ -375,6 +516,9 @@ class Game {
     this.updatePlayer();
     this.updateCube();
     this.checkCollisionBetweenPlayerAndCube();
+    this.updateCam();
+    this.winDoor()
+
     this.draw();
     requestAnimationFrame(() => this.gameLoop());
   }
@@ -452,5 +596,21 @@ class Game {
 
 // Démarrer le jeu lorsque la fenêtre est chargée
 window.onload = function () {
-  new Game();
+  let game = new Game();
+
+
+  document.addEventListener('mousemove', function (event) {
+    const rect = game.canvas.getBoundingClientRect(); // Obtenez les coordonnées du rectangle de votre canvas
+    const mouseX = event.clientX - rect.left; // Coordonnée X de la souris par rapport à votre canvas
+    const mouseY = event.clientY - rect.top; // Coordonnée Y de la souris par rapport à votre canvas
+
+    // Ajustez les coordonnées de la souris en fonction de la position de la caméra
+    console.log(game.cameraX)
+    const adjustedMouseX = mouseX + game.cameraX;
+    const adjustedMouseY = mouseY + game.cameraY;
+
+    // Affichez les coordonnées de la souris ajustées
+    document.getElementById("mousePosition").textContent = `Position de la souris : X = ${adjustedMouseX}, Y = ${adjustedMouseY}`;
+});
+
 };
