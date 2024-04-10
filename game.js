@@ -543,12 +543,15 @@ class Game {
       this.player.x + this.player.width > this.door.x &&
       this.player.y < this.door.y + this.door.height &&
       this.player.y + this.player.height > this.door.y) {
+
       if (this.hasCubeTouchedDoor) {
         this.hasCubeTouchedDoor = false;
         this.level += 1
         this.loadLevel(this.level)
       } else {
-        // Traitement de collision simple
+
+        this.player.x -= this.player.nbmove;
+
       }
     }
   }
