@@ -1,18 +1,33 @@
-class Player {
+class Entity {
   constructor(x, y, width, height) {
     this.x = x;
     this.y = y;
-    this.startX = x;
-    this.startY = y;
     this.width = width;
     this.height = height;
     this.velocityY = 0;
     this.gravity = 0.5;
+    this.gravityEnabled = true;
+  }
+
+  draw(ctx, cameraX, cameraY, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
+  }
+
+  reset() {
+    this.x = this.startX;
+    this.y = this.startY;
+  }
+}
+
+class Player extends Entity {
+  constructor(x, y, width, height) {
+    super(x, y, width, height);
+    this.startX = x;
+    this.startY = y;
     this.isJumping = false;
     this.jumpForce = -10;
-    this.timeoutJump = {};
     this.move = true;
-    this.gravityEnabled = true;
     this.isDashing = false;
     this.nbmove = 5;
     this.movingDroite = false;
@@ -20,46 +35,27 @@ class Player {
     this.dashDirection = null;
     this.morto = true;
     this.isCarryingCube = false;
+    this.timeoutJump = null;
   }
 
-  /**
-   * Dessine le joueur sur le canvas.
-   * @param {CanvasRenderingContext2D} ctx - Le contexte de rendu du canvas.
-   */
-  draw(ctx, cameraX, cameraY) {
-    ctx.fillStyle = "blue";
-    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
-  }
-
-  /**
-   * Permet de réinitialiser l'état de saut du joueur.
-   */
   clearJump() {
     this.isJumping = false;
     clearTimeout(this.timeoutJump);
   }
 
   reset() {
-    this.x = this.startX
-    this.y = this.startY
+    super.reset();
+    this.isCarryingCube = false;
   }
 
-  /**
-   * Effectue les actions nécessaires lorsque le joueur meurt.
-   */
   mort() {
-
     if (!this.morto) {
       console.log("Le joueur est mort !");
       this.morto = true;
       window.location.reload();
     }
-
   }
 
-  /**
-   * Permet au joueur d'effectuer un saut.
-   */
   jump() {
     if (!this.isJumping) {
       this.isJumping = true;
@@ -74,17 +70,14 @@ class Player {
     let nbDash = 100; // La distance que le joueur va parcourir lors du dash
     let dashDuration = 250; // Durée du dash en millisecondes
     let dashSpeed = nbDash / dashDuration; // Vitesse du dash
-    let player = this;
-    if (!player.isDashing) {
-      player.isDashing = true;
-      player.move = false;
-      player.gravity = false;
-      var initialX = player.x;
-      var targetX =
-        false === this.movingDroite ? player.x - nbDash : player.x + nbDash;
 
-      this.dashDirection = this.movingDroite ? "right" : "left";
+    if (!this.isDashing) {
+      this.isDashing = true;
+      this.move = false;
+      this.gravityEnabled = false;
 
+      var initialX = this.x;
+      var targetX = this.movingDroite ? this.x + nbDash : this.x - nbDash;
       var startTime = performance.now();
 
       const dashStep = (timestamp) => {
@@ -92,96 +85,58 @@ class Player {
         var progress = Math.min(elapsedTime / dashDuration, 1); // Progression du dash (de 0 à 1)
         var newX = initialX + progress * (targetX - initialX); // Calcul de la nouvelle position
 
-        player.x = newX;
-        console.log(progress);
+        this.x = newX;
 
         if (progress < 1) {
-          player.movingDroite = false;
-          player.movingGauche = false;
-          requestAnimationFrame((timestamp) => {
-            dashStep(timestamp);
-          }); // Continuer le dash jusqu'à ce que la progression atteigne 1
+          requestAnimationFrame(dashStep); // Continuer le dash jusqu'à ce que la progression atteigne 1
         } else {
-          player.isDashing = false; // Fin du dash
-          player.move = true;
-          player.gravity = true;
+          this.isDashing = false; // Fin du dash
+          this.move = true;
+          this.gravityEnabled = true;
         }
       };
-      requestAnimationFrame((timestamp) => {
-        dashStep(timestamp);
-      });
+      requestAnimationFrame(dashStep);
     }
   }
 }
 
-class Cube {
+class Cube extends Entity {
   constructor(x, y, width, height) {
-    this.x = x;
-    this.y = y;
+    super(x, y, width, height);
     this.startX = x;
     this.startY = y;
-    this.width = width;
-    this.height = height;
     this.velocityY = 0;
     this.gravity = 0.5;
     this.gravityDirection = "down";
     this.gravityEnabled = true;
   }
 
-  draw(ctx, cameraX, cameraY) {
-    // Dessiner le cube sur le canvas
-    ctx.fillStyle = "red"; // Couleur de remplissage
-    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
-  }
-
   reset() {
-    this.x = this.startX
-    this.y = this.startY
+    super.reset();
+    //this.player.isCarryingCube = false;
+    this.gravityEnabled = true;
+    this.gravityDirection = "down";
   }
-
 }
 
-
-class Door {
+class Door extends Entity {
   constructor(x, y, width, height) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-  }
-
-  draw(ctx, cameraX, cameraY) {
-    // Dessiner sur le canvas
-    ctx.fillStyle = "aqua"; // Couleur de remplissage
-    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
+    super(x, y, width, height);
   }
 }
 
-
-class Platform {
-  /**
-   * Crée une instance de plateforme.
-   * @param {number} x - La position horizontale de la plateforme.
-   * @param {number} y - La position verticale de la plateforme.
-   * @param {number} width - La largeur de la plateforme.
-   * @param {number} height - La hauteur de la plateforme.
-   */
+class Platform extends Entity {
   constructor(x, y, width, height) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-  }
-
-  /**
-   * Dessine la plateforme sur le canvas.
-   * @param {CanvasRenderingContext2D} ctx - Le contexte de rendu du canvas.
-   */
-  draw(ctx, cameraX, cameraY) {
-    ctx.fillStyle = "green";
-    ctx.fillRect(this.x - cameraX, this.y - cameraY, this.width, this.height);
+    super(x, y, width, height);
   }
 }
+
+class Button extends Entity {
+  constructor(x, y, width, height) {
+    super(x, y, width, height);
+  }
+}
+
 
 /**
  * Représente le jeu.
@@ -236,17 +191,38 @@ class Game {
       },
       {
         platforms: [
-          { x: 0, y: 960, width: 200, height: 40 }, // Plateforme 
-          {x: 245, y: 405, width: 226, height: 40},
-          {x: 499, y: 602, width: 199, height: 40}
+          { x: 0, y: 960, width: 200, height: 40 }, // Plateforme Baso
+          { x: 245, y: 405, width: 226, height: 40 },
+          { x: 499, y: 602, width: 199, height: 40 },
+          { x: 750, y: 287, width: 250, height: 40 },
+          { x: 992, y: 601, width: 300, height: 40 }
 
         ],
-        door: { x: 1092, y: 78, width: 108, height: 124 }
+        door: { x: 1100, y: 490, width: 100, height: 150 }
+
+      },
+      {
+        platforms: [
+          { x: 0, y: 960, width: 200, height: 40 }, // Plateforme Baso
+
+          // La montée
+          { x: 160, y: 763, width: 72, height: 335 },
+          { x: 286, y: 665, width: 64, height: 335 },
+          { x: 433, y: 664, width: 104, height: 335 },
+          { x: 615, y: 607, width: 88, height: 400 },
+
+          { x: 8, y: 314, width: 158, height: 40 } //Plateforme Btn
+
+        ],
+        door: { x: 1100, y: 490, width: 100, height: 150 },
+        buttons: [
+          { x: 38, y: 333, width: 97, height: 57 }
+        ]
 
       },
     ];
 
-    this.level = 1
+    this.level = 2;
     this.loadLevel(this.level)
 
 
@@ -264,29 +240,39 @@ class Game {
     this.gameLoop();
   }
 
-  loadLevel(levelNumber) {
-    const lvlI = levelNumber - 1;
+  loadLevel(lvlN) { // LevelNumber
+    const lvlI = lvlN - 1;
     const level = this.levels[lvlI];
 
-    this.platforms = level.platforms.map(platformData => new Platform(platformData.x, platformData.y, platformData.width, platformData.height));
-    
-    if(levelNumber != 3){
-    this.platforms.push(new Platform(0, this.mapHeight - 20, this.mapWidth, 20));
-      
+
+    // Getsion Plateforme
+    this.platforms = level.platforms.map(platD => new Platform(platD.x, platD.y, platD.width, platD.height));
+
+    let nAV = [1, 2]; // Niveau a mettre plateforme en bas
+    if (nAV.includes(lvlN)) {
+      this.platforms.push(new Platform(0, this.mapHeight - 20, this.mapWidth, 20));
     }
-    
-    console.log("LoadLvl", this.platforms)
+    console.log("This.LoadPlat -> ", this.platforms)
+
+
+    // Load de porte
     if (level.door) {
       this.door = new Door(level.door.x, level.door.y, level.door.width, level.door.height); //Ajouter la porte
     } else {
       console.warn("PAS DE PORTE DE PROCHAIN NIVEAU")
     }
 
+    // Load button
+    if (level.buttons) {
+      this.buttons = level.buttons.map(btnD => new Button(btnD.x, btnD.y, btnD.width, btnD.height));
+    }
+
     //Si c'est pas le niveau 1 reset la position du cube et du joueurs :
-    if (levelNumber != 1) {
+    if (lvlN != 1) {
       this.player.reset();
       this.cube.reset();
     }
+
 
   }
 
@@ -294,14 +280,21 @@ class Game {
     this.ctx.clearRect(0, 0, this.viewportWidth, this.viewportHeight);
 
     // Dessiner les éléments de la carte en fonction de la position de la caméra
-    this.player.draw(this.ctx, this.cameraX, this.cameraY);
-    this.cube.draw(this.ctx, this.cameraX, this.cameraY);
-    this.door.draw(this.ctx, this.cameraX, this.cameraY);
+    this.player.draw(this.ctx, this.cameraX, this.cameraY, "blue");
+    this.cube.draw(this.ctx, this.cameraX, this.cameraY, "red");
+    this.door.draw(this.ctx, this.cameraX, this.cameraY, "aqua");
 
     // Dessiner les plateformes
-    this.platforms.forEach((platform) => {
-      platform.draw(this.ctx, this.cameraX, this.cameraY);
+    this.platforms.forEach((plat) => {
+      plat.draw(this.ctx, this.cameraX, this.cameraY, "green");
     });
+
+    //Dessiner les btn
+    if (this.level.buttons) {
+      this.buttons.forEach((btn) => {
+        btn.draw(this.ctx, this.cameraX, this.cameraY, "red");
+      });
+    }
   }
 
   /**
@@ -338,11 +331,19 @@ class Game {
     this.checkCol(this.platforms, this.player);
     this.checkCol(this.platforms, this.cube);
 
+    //Button
+    if (this.level.buttons) {
+      this.checkCol(this.buttons, this.player);
+      this.checkCol(this.buttons, this.cube);
+    }
+
+
+
     //Porte le cube :
     if (this.keyState['KeyX'] && !this.player.isCarryingCube) {
       this.player.isCarryingCube = true; // Activer le fait de porter le cube
       this.cube.gravityEnabled = false
-    } else if(this.keyState['KeyC'] && this.player.isCarryingCube){
+    } else if (this.keyState['KeyC'] && this.player.isCarryingCube) {
       this.player.isCarryingCube = false; // Activer le fait de porter le cube
       this.cube.gravityEnabled = true;
     }
@@ -355,7 +356,7 @@ class Game {
   }
 
   checkCol(what, objet) {
-    what.forEach((platform) => {
+    what.forEach((platform, i) => {
       let playerBottom = objet.y + objet.height;
       let playerRight = objet.x + objet.width;
       let platformTop = platform.y;
@@ -363,28 +364,55 @@ class Game {
       let platformLeft = platform.x;
       let platformRight = platform.x + platform.width;
 
-      // Collision depuis le dessous
+      // Collision sur le haut de la plateforme
       if (playerBottom >= platformTop &&
         objet.y < platformTop &&
         playerRight > platformLeft &&
         objet.x < platformRight &&
         objet.velocityY >= 0) {
+
         objet.velocityY = 0;
         objet.y = platformTop - objet.height;
         if (objet === this.player) {
           objet.clearJump();
         }
+
+        if (this.level.buttons) {
+          if (platform == this.buttons[i]) {
+            platform.height /= 2;
+            this.cube.gravityDirection = "down"
+            objet.y += 200;
+            this.cube.y += 200;
+          }
+        }
+
+
       }
 
-      // Collision depuis le dessus
-      if (objet.y <= platformBottom &&
-        objet.y > platformTop &&
+      // Collision sur le bas de la plateforme
+      if (
+        (
+          (this.cube.gravityDirection === "down" && objet.y <= platformBottom && objet.y > platformTop && objet.velocityY <= 0) ||
+          (this.cube.gravityDirection === "up" && objet.y + objet.height >= platformTop && objet.y + objet.height < platformBottom && objet.velocityY >= 0)
+        ) &&
         playerRight > platformLeft &&
-        objet.x < platformRight &&
-        objet.velocityY <= 0) {
+        objet.x < platformRight
+      ) {
+        console.log("Bas ?");
+
         objet.velocityY = 0;
         objet.y = platformBottom;
+        this.cube.gravityDirection = "down";
+
+        if (this.level.buttons) {
+          if (platform === this.buttons[i]) {
+            objet.y -= 50;
+            platform.height /= 2;
+          }
+        }
       }
+
+
 
       // Collision avec les côtés
       if (objet.x + objet.width >= platformLeft &&
@@ -414,17 +442,22 @@ class Game {
         this.cube.velocityY += this.cube.gravity;
         this.cube.y += this.cube.velocityY;
 
-        if (this.cube.y + this.cube.height >= this.canvasHeight) {
-          this.cube.velocityY = 0;
-          this.cube.y = this.canvasHeight - this.cube.height;
-        }
+        // if (this.cube.y + this.cube.height >= this.canvasHeight) {
+        //   this.cube.velocityY = 0;
+        //   this.cube.y = this.canvasHeight - this.cube.height;
+        // }
       }
 
     } else if (this.cube.gravityDirection === "up") {
       // Appliquer la gravité vers le haut
-      this.cube.velocityY += this.cube.gravity;
-      this.cube.y -= this.cube.velocityY;
-      this.cube.velocityY = this.cube.velocityY / 1.1;
+      this.cube.velocityY -= this.cube.gravity * 0.3; // Réduire la gravité vers le haut
+      this.cube.y += this.cube.velocityY;
+
+      // Assurer que le cube ne s'échappe pas en haut de l'écran
+      if (this.cube.y < 0) {
+        this.cube.y = 0;
+        this.cube.velocityY = 0;
+      }
     }
   }
 
