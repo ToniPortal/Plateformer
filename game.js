@@ -328,13 +328,12 @@ class Game {
     }
 
     //Platform
-    this.checkCol(this.platforms, this.player);
-    this.checkCol(this.platforms, this.cube);
+    this.checkColPlatPlayer();
 
     //Button
     if (this.level.buttons) {
-      this.checkCol(this.buttons, this.player);
-      this.checkCol(this.buttons, this.cube);
+      // this.checkCol(this.buttons, this.player);
+      // this.checkCol(this.buttons, this.cube);
     }
 
 
@@ -355,83 +354,69 @@ class Game {
 
   }
 
-  checkCol(what, objet) {
-    what.forEach((platform, i) => {
-      let playerBottom = objet.y + objet.height;
-      let playerRight = objet.x + objet.width;
-      let platformTop = platform.y;
-      let platformBottom = platform.y + platform.height;
-      let platformLeft = platform.x;
-      let platformRight = platform.x + platform.width;
-
-      // Collision sur le haut de la plateforme
-      if (playerBottom >= platformTop &&
-        objet.y < platformTop &&
-        playerRight > platformLeft &&
-        objet.x < platformRight &&
-        objet.velocityY >= 0) {
-
-        objet.velocityY = 0;
-        objet.y = platformTop - objet.height;
-        if (objet === this.player) {
-          objet.clearJump();
-        }
-
-        if (this.level.buttons) {
-          if (platform == this.buttons[i]) {
-            platform.height /= 2;
-            this.cube.gravityDirection = "down"
-            objet.y += 200;
-            this.cube.y += 200;
-          }
-        }
+  checkColPlatPlayer() {
+    this.platforms.forEach((platform, i) => {
 
 
-      }
-
-      // Collision sur le bas de la plateforme
+      // Calculer la position Y à laquelle le joueur doit être placé
       if (
-        (
-          (this.cube.gravityDirection === "down" && objet.y <= platformBottom && objet.y > platformTop && objet.velocityY <= 0) ||
-          (this.cube.gravityDirection === "up" && objet.y + objet.height >= platformTop && objet.y + objet.height < platformBottom && objet.velocityY >= 0)
-        ) &&
-        playerRight > platformLeft &&
-        objet.x < platformRight
+        // Vérifier si le joueur est en collision avec le haut de la plateforme
+        this.player.y + this.player.height > platform.y && // Le bas du joueur est au-dessus du haut de la plateforme
+        this.player.y < platform.y && // Le haut du joueur est en dessous du haut de la plateforme
+        this.player.x + this.player.width > platform.x && this.player.x < platform.x + platform.width && // Le joueur est dans la largeur de la plateforme
+        this.player.velocityY > 0 // Faire la collision uniquement si aussi le joueur est en train de tomber
       ) {
-        console.log("Bas ?");
+        // console.log("Le joueur est en collision avec le haut de la plateforme");
 
-        objet.velocityY = 0;
-        objet.y = platformBottom;
-        this.cube.gravityDirection = "down";
+        // Ajuster la position Y du joueur pour qu'il soit au-dessus de la plateforme
+        this.player.y = platform.y - this.player.height;
 
-        if (this.level.buttons) {
-          if (platform === this.buttons[i]) {
-            objet.y -= 50;
-            platform.height /= 2;
-          }
-        }
+        // Arrêter la vitesse verticale du joueur
+        this.player.velocityY = 0;
+      }
+
+
+      if (this.player.y + this.player.height > platform.y + platform.height &&
+        this.player.y < platform.y + platform.height &&
+        this.player.x > platform.x && this.player.x < platform.x + platform.width && // Le joueur est dans la largeur de la plateforme
+        this.player.velocityY < 0) {
+
+        // console.log("Le joueur est en collision avec le bas de la plateforme");
+        this.player.y = platform.y + platform.height;
+
       }
 
 
 
-      // Collision avec les côtés
-      if (objet.x + objet.width >= platformLeft &&
-        objet.x < platformLeft &&
-        playerBottom > platformTop &&
-        objet.y < platformBottom &&
-        objet.x + objet.width - platformLeft < objet.y + objet.height - platformTop) {
-        objet.x = platformLeft - objet.width - this.player.nbmove;
-      }
 
-      if (objet.x <= platformRight &&
-        objet.x + objet.width > platformRight &&
-        playerBottom > platformTop &&
-        objet.y < platformBottom &&
-        platformRight - objet.x < objet.y + objet.height - platformTop) {
-        objet.x = platformRight + this.player.nbmove;
-      }
+// Collision avec les côtés
+if (
+  // Collision avec le côté gauche de la plateforme
+  this.player.x + this.player.width >= platform.x && // Le côté droit du joueur touche le côté gauche de la plateforme
+  this.player.x < platform.x && // Le joueur est à gauche de la plateforme
+  this.player.y + this.player.height > platform.y && // Le bas du joueur est au-dessus du haut de la plateforme
+  this.player.y < platform.y + platform.height && // Le joueur est en dessous du haut de la plateforme
+  this.player.x + this.player.width - platform.x < this.player.y + this.player.height - platform.y // Correction de la position
+) {
+  this.player.x = platform.x - this.player.width - this.player.nbmove; // Ajuster la position X du joueur pour qu'il soit à gauche de la plateforme
+}
+
+if (
+  // Collision avec le côté droit de la plateforme
+  this.player.x <= platform.x + platform.width && // Le côté gauche du joueur touche le côté droit de la plateforme
+  this.player.x + this.player.width > platform.x + platform.width && // Le joueur est à droite de la plateforme
+  this.player.y + this.player.height > platform.y && // Le bas du joueur est au-dessus du haut de la plateforme
+  this.player.y < platform.y + platform.height && // Le joueur est en dessous du haut de la plateforme
+  platform.x + platform.width - this.player.x < this.player.y + this.player.height - platform.y // Correction de la position
+) {
+  this.player.x = platform.x + platform.width + this.player.nbmove; // Ajuster la position X du joueur pour qu'il soit à droite de la plateforme
+}
+
+
+
     });
   }
+
 
 
 
@@ -462,78 +447,24 @@ class Game {
   }
 
   checkCollisionBetweenPlayerAndCube() {
-    let objet = this.player;
-    let platform = this.cube;
-    if (
-      // Collision depuis le dessous
-      objet.y + objet.height >= platform.y &&
-      objet.y + objet.height <= platform.y + platform.height &&
-      objet.x < platform.x + platform.width &&
-      objet.x + objet.width > platform.x
-    ) {
-      // Réaction à la collision depuis le dessous
-      objet.velocityY = 0;
-      objet.y = platform.y - objet.height;
-      if (objet === this.player) {
-        objet.clearJump();
-      }
-    } else if (
-      // Collision depuis le dessus
-      objet.y <= platform.y + platform.height &&
-      objet.y > platform.y &&
-      objet.x < platform.x + platform.width &&
-      objet.x + objet.width > platform.x
-    ) {
-      // Réaction à la collision depuis le dessus
-      objet.velocityY = 0;
-      objet.y = platform.y + platform.height;
-    } else {
-      // Collision avec les côtés
-      if (
-        objet.x + objet.width >= platform.x &&
-        objet.x + objet.width <= platform.x + platform.width &&
-        objet.y + objet.height > platform.y &&
-        objet.y < platform.y + platform.height
-      ) {
-        // Réaction à la collision avec le côté gauche de la plateforme
-        objet.x = platform.x - objet.width - this.player.nbmove;
-      }
-      if (
-        objet.x <= platform.x + platform.width &&
-        objet.x >= platform.x &&
-        objet.y + objet.height > platform.y &&
-        objet.y < platform.y + platform.height
-      ) {
-        // Réaction à la collision avec le côté droit de la plateforme
-        objet.x = platform.x + platform.width + this.player.nbmove;
-      }
-    }
 
-    // Function de balade droite/gauche
-    if (
-      // Vérifie si le personnage est sur le cube
-      this.player.y + this.player.height >= this.cube.y &&
-      this.player.y < this.cube.y + this.cube.height &&
-      this.player.x < this.cube.x + this.cube.width &&
-      this.player.x + this.player.width > this.cube.x
-    ) {
 
-      // Vérifie si le personnage est sur le côté droit du cube
-      if (this.player.x > this.cube.x + this.cube.width / 3) {
-        let nbmove = 2;
-        this.player.x += nbmove;
-        this.cube.x += nbmove;
-      }
+    // // Vérifie si le personnage est sur le côté droit du cube
+    // if (this.player.x > this.cube.x + this.cube.width / 3) {
+    //   let nbmove = 2;
+    //   this.player.x += nbmove;
+    //   this.cube.x += nbmove;
+    // }
 
-      // Vérifie si le personnage est sur le côté Gauche du cube
-      if (this.player.x < this.cube.x - this.cube.width / 3) {
-        let nbmove = 2;
-        this.player.x -= nbmove;
-        this.cube.x -= nbmove;
+    // // Vérifie si le personnage est sur le côté Gauche du cube
+    // if (this.player.x < this.cube.x - this.cube.width / 3) {
+    //   let nbmove = 2;
+    //   this.player.x -= nbmove;
+    //   this.cube.x -= nbmove;
 
-      }
+    // }
 
-    }
+
   }
 
   updateCam() {
@@ -690,17 +621,11 @@ class Game {
     });
 
     // document.addEventListener('mousemove', function (event) {
-    //   const rect = this.canvas.getBoundingClientRect(); // Obtenez les coordonnées du rectangle de votre canvas
-    //   const mouseX = event.clientX - rect.left; // Coordonnée X de la souris par rapport à votre canvas
-    //   const mouseY = event.clientY - rect.top; // Coordonnée Y de la souris par rapport à votre canvas
+    //   // Obtenez la position y de la souris par rapport à la fenêtre du navigateur
+    //   const y = event.clientY;
 
-    //   // Ajustez les coordonnées de la souris en fonction de la position de la caméra
-    //   console.log(this.cameraX)
-    //   const adjustedMouseX = mouseX + this.cameraX;
-    //   const adjustedMouseY = mouseY + this.cameraY;
-
-    //   // Affichez les coordonnées de la souris ajustées
-    //   document.getElementById("mousePosition").textContent = `Position de la souris : X = ${adjustedMouseX}, Y = ${adjustedMouseY}`;
+    //   // Mettez à jour le contenu de l'élément avec la position y de la souris
+    //   document.getElementById("mousePosition").textContent = `Position Y de la souris : ${y}px`;
     // });
 
 
